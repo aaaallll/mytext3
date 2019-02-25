@@ -1,0 +1,409 @@
+--创建表空间
+create tablespace itheima
+--指定表空间文件-表空间存储物理路径在服务器
+datafile 'C:\oracle\db\itheima.dbf'   (格式有两种,一种是dbf,一种是ora)此处是服务器地址,不是本地地址
+--指定表空间的初始化大小(表示初始数据是100M)
+size 100m
+--自动扩展(代表数据不够的时候自动扩展)
+autoextend on
+--扩展大小(表示每次扩展多大)
+next 10m;
+
+
+--创建用户
+create user itheima54   这个代表创建的用户名为itheima54
+identified by itheima54   这个代表用户名为itheima54
+default tablespace   itheima54  这个代表给哪个表空间创建用户名为itheima54
+
+给用户授予权限
+grant dba to itheima;    dba是最大的权限
+
+
+orac数据类型
+varchar 表示字符串,指定了数据储存空间大小就是大小了
+varchar2  表示的是根据你存储的数据大小占用空间,而不是你指定的存储空间
+number   包括了数字的所有类型, number(5,2)   5表示的是总长度,而2表示的是小数,那么整数就是3
+
+
+序列:
+create sequence userlist;     这个是创建一个userlist的序列
+select userlist.nextval from dual  这个是让序列自增(这里的dual:是虚拟表,主要是为了保证SQL语句的正常运行:)
+select userlist.currval from dual    这个是查询当前序列的最大值(如果要查询当前序列的最大值必须执行一次select userlist.nextval from dua)
+insert into person(pid,name,gender,birthday,address) values(userlist.nextval,'小芳',1,null,'深圳');  这个是让序列添加到表中(但是注意了,添加进去的是当前序列的最大值)
+drop sequence userlist (这个是删除序列,删除后重新创建就是从1开始)
+
+[INCREMENT BY n]  这个是每次递增几
+[START WITH n]    这个是从几开始递增
+[{MAXVALUE/ MINVALUE n|NOMAXVALUE}]  这个是设置递增的区间7-20
+[{CYCLE|NOCYCLE}]  这个是循环操作   1-10递增完了,然后又从1-10递增
+[{CACHE n|NOCACHE}];
+
+create sequence usermap
+increment by 2
+start with 5
+
+scott是一个系统已经新建好的普通用户,用户名scott，密码默认tiger，默认状态是被锁定.要想使用，需要先进行解锁操作。
+
+解锁过程如下：
+
+
+解锁用户
+alter user scott account unlock;
+重置密码
+ alter user scott identified by tiger;
+
+scott账户可以登录了
+conn scott/tiger 
+
+单行函数的讲解:
+可以通过查看oracle表来查询函数的用法
+
+select empno,ename,job, decode(job,
+'SALESMAN','销售经理',
+'MANAGER','管理经理',
+'普通员工') 
+职位 from emp
+
+
+select
+ empno,ename,job,
+case
+  when job='SALESMAN' then
+    '销售经理'
+    when job='MANAGER' then
+
+select e1.empno,e1.ename,e1.mgr,e2.empno,e2.ename from emp e1,emp e2 where e1.mgr=e2.empno  这个是自连查询
+
+select e1.empno,e1.ename,e1.mgr,e2.empno,e2.ename from emp e1,emp e2 where e1.mgr(+)=e2.empno 这个加号代表右连接
+
+select e1.empno,e1.ename,e1.mgr,e2.empno,e2.ename from emp e1,emp e2 where e1.mgr=e2.empno(+) 这个代表的是左连接,左和右是跟加号相反方向
+
+    '总经理'
+    else 
+      '普通员工'
+      end 职位
+ from emp
+
+
+这个rownum主要是用于分页查询的
+
+select rownum rn,emp.* from emp where rownum>=1 and rownum<=2;
+由于rownum必须是从1开始,所以需要重新弄一个表当做以及取别名
+select * from (select rownum rn,emp.* from emp) e1 where e1.rn>=5 and e1.rn<=6;
+
+select * from (select rownum rn,em.* from (select * from emp order by sal desc) em ) e1 where e1.rn>=3 and e1.rn<=4;注意分页的这个排序操作了  
+
+create view it as select * from emp where ename='王五'  这个是创建视图 (视图其实就是一个复杂的查询语句)
+
+select * from it   这个是用视图 
+update it set ename='李四' where empno=7369
+select * from emp where empno=7369   这个是利用视图修改内容
+
+create or replace view it as select * from emp with read only 这个是把视图变成只读,不能去修改
+
+创建只读的正确流程
+create or replace view ittt as select * from emp where ename='李四' with read only
+
+select * from ittt
+
+update ittt set ename='周期' where empno=7369
+
+索引
+create index itit on emp(MGR);这个是为了创建索引用的!
+
+下面这个是为了查看是否使用索引操作
+EXPLAIN PLAN FOR
+select * from emp where mgr=7902; 
+select * from table(DBMS_XPLAN.display);
+
+这个是使用了复合搜索,
+create index ittm on emp(ename,mgr)
+
+EXPLAIN PLAN FOR
+select * from emp  where mgr=7902 and ename='李四';
+select * from table(DBMS_XPLAN.display);
+commit;
+
+commit;
+
+值得注意的是使用模糊搜索会破坏索引搜索的,但是去掉李四全面%还是使用复合搜索的
+EXPLAIN PLAN FOR
+select * from emp where ename like '李四%'; 
+select * from table(DBMS_XPLAN.display);
+commit;
+
+PL/SQL
+
+declare
+sex constant number(10):=1;  这里是定义一个常量,有constant是一个常量,没有就是一个普通变量
+
+emm varchar(10):='小红'; 定义一个字符串
+
+ejob emp.job%type; 这里的类型是将emp的job的类型复制给ejob
+
+cemp emp%rowtype;  这里就是将一行的属性复制给了cemp
+
+begin
+  
+ejob:='程序猿';
+ 
+select * into cemp from emp where empno=7369;这个就是将7369的值赋值给了cemp
+
+dbms_output.put_line(sex||emm||ejob);  这个就是输出语句
+
+dbms_output.put_line(cemp.empno||cemp.ename||cemp.job||cemp.mgr);
+
+end;
+
+
+
+if条件判断
+
+declare
+
+age number(10):=&num;
+
+begin
+  if age<18 then
+  dbms_output.put_line('未成年');
+  elsif age<25 then
+  dbms_output.put_line('青成年');
+  elsif age<40 then
+   dbms_output.put_line('中成年');
+  else
+   dbms_output.put_line('老成年');
+   end if;
+end;
+
+循环语句:
+
+declare
+
+a number(3):=1;
+
+begin
+  
+while a<10 loop
+  
+dbms_output.put_line(a);
+
+a:=a+1;
+
+end loop;
+
+end;
+
+
+这个也是条件判断循环,只不过这个是当a>10的时候才退出循环
+declare
+a number(3):=1;
+begin
+  loop exit when a>10;
+  dbms_output.put_line(a);
+  a:=a+1;
+  end loop;
+end;
+
+
+下面这个是for循环
+declare
+a number(3):=1;
+
+begin
+ for a in 1..10 loop
+  dbms_output.put_line(a);
+  end loop;
+end;
+
+
+游标
+declare
+cursor c1 is select ename from emp;  这个是定义游标集合,就是将ename这个集合给到了c1
+cname emp.ename%type;  这个定义了一个cname跟ename类型一样的变量
+
+begin
+  open c1;打开游标,然下面去取值
+  loop  开始循环
+     fetch c1 into cname;  循环赋值给cname
+     exit when c1%notfound;   这个是c1没有值的情况
+      dbms_output.put_line(cname);  这个是输出语句
+   end loop;  循环结束
+ close c1; 关闭游标
+end;
+
+declare
+cursor c2(dno emp.deptno%type) is select * from emp where deptno=dno;  这个是带有参数的游标,c2(dno)这个是带有参数的游标,然后把参数给后面的deptno=dno
+cemp emp%rowtype;
+begin
+  open c2(20);这里就是将参数传进来!
+loop 
+  fetch c2 into cemp;
+  exit when c2%notfound;
+  dbms_output.put_line(cemp.ename||':'||cemp.job);
+   end loop;
+close c2;
+end;
+
+存储过程:
+下面这个是执行了一些列复杂sql语句,将dbms_output.put_line('正在执行非常复杂存储过程');存储到了demo中
+create or replace procedure demo
+as
+begin
+  dbms_output.put_line('正在执行非常复杂存储过程');
+end;
+
+如何输出呢
+declare
+begin
+  demo;
+  end;
+
+下面是创建一个给员工加薪的存储过程
+create or replace procedure itdemo
+as
+   cempno emp.empno%type:=7654; 定义一个变量,用于存储要加薪的员工编号
+begin
+  update emp set sal=sal+100 where empno=cempno; 给员工加薪
+  commit; 增删改,不要忘了要提交事务
+end;
+上面是创建存储过程,必须存储必须调用才能生效
+declare
+begin
+  itdemo;
+end;
+
+下面这个是代表带有入参的存储过程
+create or replace procedure itdemo(cempno in emp.empno%type) 这里代表定义一个参数
+as
+begin
+  update emp set sal=sal+100 where empno=cempno;
+  commit;
+end;
+
+declare
+begin
+  itdemo(7654);这个代表传入与的参数
+end;
+
+员工职位加薪过程
+create or replace procedure itdemo(dno in emp.deptno%type)
+as
+addmoney emp.sal%type:=100;定义加薪金钱
+cursor c1 is select * from emp where deptno=dno;创建用于存储部门的集合
+cemp emp%rowtype;用于接受集合的引用变量
+begin
+  open c1;打开游标
+loop开始循环
+    fetch c1 into cemp;将集合一个一个给cemp这个引用变量
+    exit when c1%notfound; 如果c1是空的情况不走下面了
+    if cemp.job='SALESMAN' then 判断语句
+      addmoney:=500;
+      elsif cemp.job='MANAGER' then
+      addmoney:=500;
+      else
+        addmoney:=100;
+      end if;
+      update emp set sal=addmoney+sal where empno=cemp.empno;将引用变量开始赋值给.....
+      commit;
+end loop;
+close c1;
+end;
+
+declare 
+begin
+itdemo(20);
+end;
+
+下面这个是带有返回值的,就是将存储的存储到了money,out代表输出
+create or replace procedure itdemo(cempno in emp.empno%type,money out number)
+as
+cemp emp%rowtype;
+begin
+ select * into cemp from emp where empno=cempno;
+ money:=cemp.sal*12+nvl(cemp.comm,0);
+end;
+
+declare
+money number(20);
+begin
+  itdemo(7654,money);
+  dbms_output.put_line(money);
+
+end;
+
+
+
+存储函数
+create or replace function demo2  创建函数demo2     return 是存储变量, number是数据类型
+return number
+is
+begin
+  return 100;   这里的return是变量名
+  end;
+  
+  
+declare
+
+begin
+
+dbms_output.put_line(demo2());调用函数demo2输出
+end;
+
+
+传入参数的调用过程
+create or replace function demo1(cempno emp.empno%type)
+return number 
+is
+cemp emp%rowtype;
+money number;
+begin
+select * into cemp from emp where empno=cempno;
+money:=cemp.empno*12+nvl(cemp.comm,0);
+return money;
+end;
+
+declare
+begin
+  dbms_output.put_line(demo1(7654));
+end;
+
+触发器
+创建添加触发操作
+create or replace trigger addd
+after  之后触发
+insert  添加操作产生触发
+on person1
+begin
+  dbms_output.put_line('你在添加数据么');触发操作产生的操作
+end;
+
+insert into person1(pid,name) values(1,'小样');
+
+加上for each row就是添加行级触发器,本质就是为了获取添加的数据
+create or replace trigger addd1
+after
+insert
+on person1
+for each row
+begin
+  dbms_output.put_line('你在添加数据么'||:new.pid||:new.name);
+end;
+
+
+create or replace trigger addd2
+after
+update
+on person2
+for each row
+begin
+ if :old.money>:new.money then
+   raise_application_error(-20000,'涨前工资大于了涨后工资');
+   else
+     dbms_output.put_line('加工资了'||:new.money);
+     end if; 
+end;
+
+update person2 set money=1000 where pid=1;
+
+select * from person2
+
